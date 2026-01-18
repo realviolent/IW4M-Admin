@@ -100,6 +100,14 @@ namespace Stats.Helpers
                 ranking = null;
             }
 
+            if (hitStats.Count == 0 && ratings.Count == 0 && legacyStats.Count == 0)
+            {
+                return new ResourceQueryHelperResult<AdvancedStatsInfo>
+                {
+                    Results = Array.Empty<AdvancedStatsInfo>()
+                };
+            }
+
             var hitInfo = new AdvancedStatsInfo()
             {
                 ServerId = serverId,
@@ -138,7 +146,6 @@ namespace Stats.Helpers
                 Ranking = ranking,
             };
 
-            // todo: when nothign found
             return new ResourceQueryHelperResult<AdvancedStatsInfo>()
             {
                 Results = new[] {hitInfo}
