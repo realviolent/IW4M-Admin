@@ -185,6 +185,20 @@ namespace SharedLibraryCore.Configuration
             .Cast<Permission>()
             .ToDictionary(perm => perm, perm => perm.ToString());
 
+        [LocalizedDisplayName("WEBFRONT_CONFIGURATION_PERMISSION_LEVEL_COLORS")]
+        public Dictionary<Permission, string> PermissionLevelColors { get; set; } = new()
+        {
+            { Permission.Banned, "Red" },
+            { Permission.Flagged, "Map" },
+            { Permission.Owner, "Accent" },
+            { Permission.User, "Yellow" },
+            { Permission.Trusted, "Green" },
+            { Permission.Moderator, "Pink" },
+            { Permission.Administrator, "Pink" },
+            { Permission.SeniorAdmin, "Pink" },
+            { Permission.Console, "Pink" }
+        };
+
         [UIHint("ServerConfiguration")] public ServerConfiguration[] Servers { get; set; }
 
         [ConfigurationIgnore] public int MinimumNameLength { get; set; } = 3;

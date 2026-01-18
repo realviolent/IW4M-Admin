@@ -86,8 +86,7 @@ function getPlayerHistoryChart(playerHistory, i, width, maxClients) {
             defaultFontFamily: '-apple-system, BlinkMacSystemFont, "Open Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
             tooltips: {
                 callbacks: {
-                    // todo: localization at some point
-                    title: context => moment(context[0].label).local().calendar(),
+                    title: context => moment(context[0].label).local().format('L LT'),
                     label: context => context.datasetIndex !== 1 ? `${context.value} ${_localization['WEBFRONT_SCRIPT_SERVER_PLAYERS']} | ${playerHistory[context.index].ma}` : context.value === '0' ? '' : _localization['WEBFRONT_SCRIPT_SERVER_UNREACHABLE'],
                 },
                 mode: 'nearest',

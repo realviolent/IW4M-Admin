@@ -17,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Application\Application.csproj" />
     <ProjectReference Include="..\..\WebfrontCore\WebfrontCore.csproj" />
     <ProjectReference Include="..\..\SharedLibraryCore\SharedLibraryCore.csproj" />
     <ProjectReference Include="..\..\Data\Data.csproj" />

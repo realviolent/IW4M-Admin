@@ -107,6 +107,7 @@ namespace WebfrontCore
                     AdvancedClientStatsResourceQueryHelper>();
             services.AddSingleton(typeof(IDataValueCache<,>), typeof(DataValueCache<,>));
             services.AddSingleton<IResourceQueryHelper<BanInfoRequest, BanInfo>, BanInfoResourceQueryHelper>();
+            services.AddSingleton<IConfigurationFileService, ConfigurationFileService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
