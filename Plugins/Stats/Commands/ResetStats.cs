@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Data.Abstractions;
 using Data.Models.Client.Stats;
 using IW4MAdmin.Plugins.Stats.Helpers;
+using Stats.Config;
 
 namespace IW4MAdmin.Plugins.Stats.Commands
 {
@@ -15,9 +16,10 @@ namespace IW4MAdmin.Plugins.Stats.Commands
     {
         private readonly IDatabaseContextFactory _contextFactory;
         private readonly StatManager _statManager;
+        private readonly StatsConfiguration _statsConfig;
 
         public ResetStats(CommandConfiguration config, ITranslationLookup translationLookup, 
-            IDatabaseContextFactory contextFactory, StatManager statManager) : base(config, translationLookup)
+            IDatabaseContextFactory contextFactory, StatManager statManager, StatsConfiguration statsConfig) : base(config, translationLookup)
         {
             Name = "resetstats";
             Description = translationLookup["PLUGINS_STATS_COMMANDS_RESET_DESC"];
@@ -28,6 +30,7 @@ namespace IW4MAdmin.Plugins.Stats.Commands
 
             _contextFactory = contextFactory;
             _statManager = statManager;
+            _statsConfig = statsConfig;
         }
 
         public override async Task ExecuteAsync(GameEvent gameEvent)
@@ -50,8 +53,7 @@ namespace IW4MAdmin.Plugins.Stats.Commands
                     clientStats.SPM = 0.0;
                     clientStats.Skill = 0.0;
                     clientStats.TimePlayed = 0;
-                    // todo: make this more dynamic
-                    clientStats.EloRating = 200.0;
+                    clientStats.EloRating = _statsConfig.BaseEloRating;
                     await context.SaveChangesAsync();
                 }
 
