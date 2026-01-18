@@ -1,6 +1,7 @@
-﻿using SharedLibraryCore;
+using SharedLibraryCore;
 using SharedLibraryCore.Interfaces;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -36,29 +37,50 @@ namespace IW4MAdmin.Application.IO
             // open the file as a stream
             using (FileStream fs = new FileStream(_logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                byte[] buff = new byte[fileSizeDiff];
-                fs.Seek(startPosition, SeekOrigin.Begin);
-                await fs.ReadAsync(buff, 0, (int)fileSizeDiff);
-                var stringBuilder = new StringBuilder();
-                char[] charBuff = Utilities.EncodingType.GetChars(buff);
+                var length = (int)fileSizeDiff;
+                var byteBuff = ArrayPool<byte>.Shared.Rent(length);
 
-                foreach (char c in charBuff)
+                try
                 {
-                    if (c == '\n')
-                    {
-                        logLines.Add(stringBuilder.ToString());
-                        stringBuilder = new StringBuilder();
-                    }
+                    fs.Seek(startPosition, SeekOrigin.Begin);
+                    var bytesRead = await fs.ReadAsync(byteBuff, 0, length);
 
-                    else if (c != '\r')
+                    var charCount = Utilities.EncodingType.GetCharCount(byteBuff, 0, bytesRead);
+                    var charBuff = ArrayPool<char>.Shared.Rent(charCount);
+
+                    try
                     {
-                        stringBuilder.Append(c);
+                        var charsWritten = Utilities.EncodingType.GetChars(byteBuff, 0, bytesRead, charBuff, 0);
+                        var chars = charBuff.AsSpan(0, charsWritten);
+                        var stringBuilder = new StringBuilder();
+
+                        foreach (char c in chars)
+                        {
+                            if (c == '\n')
+                            {
+                                logLines.Add(stringBuilder.ToString());
+                                stringBuilder.Clear();
+                            }
+
+                            else if (c != '\r')
+                            {
+                                stringBuilder.Append(c);
+                            }
+                        }
+
+                        if (stringBuilder.Length > 0)
+                        {
+                            logLines.Add(stringBuilder.ToString());
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<char>.Shared.Return(charBuff);
                     }
                 }
-
-                if (stringBuilder.Length > 0)
+                finally
                 {
-                    logLines.Add(stringBuilder.ToString());
+                    ArrayPool<byte>.Shared.Return(byteBuff);
                 }
             }
 
