@@ -814,7 +814,6 @@ namespace SharedLibraryCore
             string infoResponseName = null, IDictionary<string, string> infoResponse = null,
             T overrideDefault = default, CancellationToken token = default)
         {
-            // todo: unit test this
             var mappedKey = server.RconParser.GetOverrideDvarName(dvarName);
             var defaultValue = server.RconParser.GetDefaultDvarValue<T>(mappedKey) ?? overrideDefault;
 
