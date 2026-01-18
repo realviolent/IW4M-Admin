@@ -14,6 +14,7 @@ namespace SharedLibraryCore.Interfaces
         /// <typeparam name="T">base configuration type</typeparam>
         /// <param name="name">file name of configuration</param>
         /// <returns>new configuration handler instance</returns>
+        [System.Obsolete("Use GetConfigurationHandlerAsync instead")]
         IConfigurationHandler<T> GetConfigurationHandler<T>(string name) where T : IBaseConfiguration;
 
         /// <summary>

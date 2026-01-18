@@ -62,6 +62,9 @@ namespace ApplicationTests
             A.CallTo(() => handlerFactory.GetConfigurationHandler<StatsConfiguration>(A<string>.Ignored))
                 .Returns(config);
 
+            A.CallTo(() => handlerFactory.GetConfigurationHandlerAsync<StatsConfiguration>(A<string>.Ignored))
+                .Returns(Task.FromResult(config));
+
             var server = serviceProvider.GetRequiredService<IW4MServer>();
 
             var parser = new BaseEventParser(A.Fake<IParserRegexFactory>(), A.Fake<ILogger>(), A.Fake<ApplicationConfiguration>());

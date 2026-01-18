@@ -16,6 +16,7 @@ namespace IW4MAdmin.Application.Factories
         /// <typeparam name="T">base configuration type</typeparam>
         /// <param name="name">name of the config file</param>
         /// <returns></returns>
+        [System.Obsolete("Use GetConfigurationHandlerAsync instead")]
         public IConfigurationHandler<T> GetConfigurationHandler<T>(string name) where T : IBaseConfiguration
         {
             var handler = new BaseConfigurationHandler<T>(name);
