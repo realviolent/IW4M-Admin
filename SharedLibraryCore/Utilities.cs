@@ -93,6 +93,7 @@ namespace SharedLibraryCore
         public const long WORLD_ID = -1;
 
         public static Dictionary<Permission, string> PermissionLevelOverrides { get; } = new ();
+        public static Dictionary<Permission, string> PermissionLevelColors { get; } = new ();
 
         //Remove words from a space delimited string
         public static string RemoveWords(this string str, int num)
@@ -240,17 +241,7 @@ namespace SharedLibraryCore
         /// <returns></returns>
         public static string ConvertLevelToColor(Permission level, string localizedLevel)
         {
-            // todo: make configurable
-            var colorCode = level switch
-            {
-                Permission.Banned => "Red",
-                Permission.Flagged => "Map",
-                Permission.Owner => "Accent",
-                Permission.User => "Yellow",
-                Permission.Trusted => "Green",
-                _ => "Pink"
-            };
-
+            var colorCode = PermissionLevelColors.ContainsKey(level) ? PermissionLevelColors[level] : "Pink";
             return $"(Color::{colorCode}){localizedLevel ?? level.ToString()}";
         }
 
