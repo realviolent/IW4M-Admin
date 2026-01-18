@@ -194,38 +194,6 @@ namespace SharedLibraryCore
         /// <returns>true if removal succeeded, false otherwise</returns>
         public abstract Task OnClientDisconnected(EFClient client);
 
-        /// <summary>
-        ///     Get a player by name
-        ///     todo: make this an extension
-        /// </summary>
-        /// <param name="pName">EFClient name to search for</param>
-        /// <returns>Matching player if found</returns>
-        public List<EFClient> GetClientByName(string pName)
-        {
-            if (string.IsNullOrEmpty(pName))
-            {
-                return new List<EFClient>();
-            }
-
-            pName = pName.Trim().StripColors();
-
-            var QuoteSplit = pName.Split('"');
-            var literal = false;
-            if (QuoteSplit.Length > 1)
-            {
-                pName = QuoteSplit[1];
-                literal = true;
-            }
-
-            if (literal)
-            {
-                return GetClientsAsList().Where(p => p.Name?.StripColors()?.ToLower() == pName.ToLower()).ToList();
-            }
-
-            return GetClientsAsList().Where(p => (p.Name?.StripColors()?.ToLower() ?? "").Contains(pName.ToLower()))
-                .ToList();
-        }
-
         public virtual Task<bool> ProcessUpdatesAsync(CancellationToken token)
         {
             return (Task<bool>)Task.CompletedTask;
