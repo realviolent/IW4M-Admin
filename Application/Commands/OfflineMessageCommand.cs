@@ -56,7 +56,7 @@ namespace IW4MAdmin.Application.Commands
                     }).ToListAsync();
             });
 
-            _alertManager.OnAlertConsumed += (_, state) =>
+            _alertManager.OnAlertConsumed += async (_, state) =>
             {
                 if (state.Category != Alert.AlertCategory.Message || state.ReferenceId is null)
                 {
@@ -65,14 +65,14 @@ namespace IW4MAdmin.Application.Commands
 
                 try
                 {
-                    var context = contextFactory.CreateContext(true);
-                    foreach (var message in context.InboxMessages
-                                 .Where(message => message.InboxMessageId == state.ReferenceId.Value).ToList())
+                    await using var context = contextFactory.CreateContext(true);
+                    foreach (var message in await context.InboxMessages
+                                 .Where(message => message.InboxMessageId == state.ReferenceId.Value).ToListAsync())
                     {
                         message.IsDelivered = true;
                     }
 
-                    context.SaveChanges();
+                    await context.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
