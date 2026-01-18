@@ -51,11 +51,11 @@ namespace IW4MAdmin.Application.IO
                     try
                     {
                         var charsWritten = Utilities.EncodingType.GetChars(byteBuff, 0, bytesRead, charBuff, 0);
-                        var chars = charBuff.AsSpan(0, charsWritten);
                         var stringBuilder = new StringBuilder();
 
-                        foreach (char c in chars)
+                        for (var i = 0; i < charsWritten; i++)
                         {
+                            var c = charBuff[i];
                             if (c == '\n')
                             {
                                 logLines.Add(stringBuilder.ToString());

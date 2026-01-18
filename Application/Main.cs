@@ -1,4 +1,4 @@
-﻿using IW4MAdmin.Application.API.Master;
+using IW4MAdmin.Application.API.Master;
 using IW4MAdmin.Application.EventParsers;
 using IW4MAdmin.Application.Factories;
 using IW4MAdmin.Application.Meta;
@@ -17,6 +17,7 @@ using SharedLibraryCore.Repositories;
 using SharedLibraryCore.Services;
 using Stats.Dtos;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -147,8 +148,29 @@ namespace IW4MAdmin.Application
 
                 var configHandler = new BaseConfigurationHandler<ApplicationConfiguration>("IW4MAdminSettings");
                 await configHandler.BuildAsync();
-                _serviceProvider = WebfrontCore.Program.InitializeServices(ConfigureServices,
-                    (configHandler.Configuration() ?? new ApplicationConfiguration()).WebfrontBindUrl);
+
+                var appConfig = configHandler.Configuration() ?? new ApplicationConfiguration();
+                var masterUri = Utilities.IsDevelopment
+                    ? new Uri("http://127.0.0.1:8080")
+                    : appConfig.MasterUrl;
+                var httpClient = new HttpClient(new HttpClientHandler {AllowAutoRedirect = true})
+                {
+                    BaseAddress = masterUri,
+                    Timeout = TimeSpan.FromSeconds(15)
+                };
+                var masterRestClient = RestService.For<IMasterApi>(httpClient);
+
+                var pluginLogger = BuildDefaultLogger<PluginImporter>(appConfig);
+                var remoteAssemblyHandlerLogger = BuildDefaultLogger<RemoteAssemblyHandler>(appConfig);
+                var remoteAssemblyHandler = new RemoteAssemblyHandler(remoteAssemblyHandlerLogger, appConfig);
+                var pluginImporter = new PluginImporter(pluginLogger, appConfig, masterRestClient, remoteAssemblyHandler);
+
+                var (plugins, commands, configurations) = await pluginImporter.DiscoverAssemblyPluginImplementationsAsync();
+                var scriptPlugins = await pluginImporter.DiscoverScriptPluginsAsync();
+
+                _serviceProvider = WebfrontCore.Program.InitializeServices(serviceCollection =>
+                    ConfigureServices(serviceCollection, configHandler, masterRestClient, plugins, commands, configurations, scriptPlugins),
+                    appConfig.WebfrontBindUrl);
               
                 _serverManager = (ApplicationManager)_serviceProvider.GetRequiredService<IManager>();
                 translationLookup = _serviceProvider.GetRequiredService<ITranslationLookup>();
@@ -334,18 +356,15 @@ namespace IW4MAdmin.Application
 
         private static IServiceCollection HandlePluginRegistration(ApplicationConfiguration appConfig,
             IServiceCollection serviceCollection,
-            IMasterApi masterApi)
+            IMasterApi masterApi,
+            IEnumerable<Type> plugins, IEnumerable<Type> commands, IEnumerable<Type> configurations,
+            IEnumerable<(Type, string)> scriptPlugins)
         {
             var defaultLogger = BuildDefaultLogger<Program>(appConfig);
-            var pluginServiceProvider = new ServiceCollection()
-                .AddBaseLogger(appConfig)
-                .AddSingleton(appConfig)
-                .AddSingleton(masterApi)
-                .AddSingleton<IRemoteAssemblyHandler, RemoteAssemblyHandler>()
-                .AddSingleton<IPluginImporter, PluginImporter>()
-                .BuildServiceProvider();
 
-            var pluginImporter = pluginServiceProvider.GetRequiredService<IPluginImporter>();
+            // register the plugin importer
+            serviceCollection.AddSingleton<IRemoteAssemblyHandler, RemoteAssemblyHandler>()
+                .AddSingleton<IPluginImporter, PluginImporter>();
 
             // we need to register the rest client with regular collection
             serviceCollection.AddSingleton(masterApi);
@@ -360,7 +379,6 @@ namespace IW4MAdmin.Application
             }
 
             // register the plugin implementations
-            var (plugins, commands, configurations) = pluginImporter.DiscoverAssemblyPluginImplementations();
             foreach (var pluginType in plugins)
             {
                 var isV2 = pluginType.GetInterface(nameof(IPluginV2), false) != null;
@@ -398,8 +416,6 @@ namespace IW4MAdmin.Application
                 serviceCollection.AddSingleton(genericInterfaceType, handlerInstance);
             }
 
-            var scriptPlugins = pluginImporter.DiscoverScriptPlugins();
-
             foreach (var scriptPlugin in scriptPlugins)
             {
                 serviceCollection.AddSingleton(scriptPlugin.Item1, sp =>
@@ -425,7 +441,11 @@ namespace IW4MAdmin.Application
         /// <summary>
         /// Configures the dependency injection services
         /// </summary>
-        private static void ConfigureServices(IServiceCollection serviceCollection)
+        private static void ConfigureServices(IServiceCollection serviceCollection,
+            BaseConfigurationHandler<ApplicationConfiguration> appConfigHandler,
+            IMasterApi masterRestClient,
+            IEnumerable<Type> plugins, IEnumerable<Type> commands, IEnumerable<Type> configurations,
+            IEnumerable<(Type, string)> scriptPlugins)
         {
             // todo: this is a quick fix
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -436,8 +456,6 @@ namespace IW4MAdmin.Application
                 .AddConfiguration<StatsConfiguration>("StatsPluginSettings");
             
             // for legacy purposes. update at some point
-            var appConfigHandler = new BaseConfigurationHandler<ApplicationConfiguration>("IW4MAdminSettings");
-            appConfigHandler.BuildAsync().GetAwaiter().GetResult();
             var commandConfigHandler = new BaseConfigurationHandler<CommandConfiguration>("CommandConfiguration");
             commandConfigHandler.BuildAsync().GetAwaiter().GetResult();
 
@@ -447,15 +465,8 @@ namespace IW4MAdmin.Application
             }
 
             var appConfig = appConfigHandler.Configuration();
-            var masterUri = Utilities.IsDevelopment
-                ? new Uri("http://127.0.0.1:8080")
-                : appConfig?.MasterUrl ?? new ApplicationConfiguration().MasterUrl;
-            var httpClient = new HttpClient(new HttpClientHandler {AllowAutoRedirect = true})
-            {
-                BaseAddress = masterUri,
-                Timeout = TimeSpan.FromSeconds(15)
-            };
-            var masterRestClient = RestService.For<IMasterApi>(httpClient);
+
+            // Reusing the passed masterRestClient instead of recreating it.
             var translationLookup = Configure.Initialize(Utilities.DefaultLogger, masterRestClient, appConfig);
             
             if (appConfig == null)
@@ -485,7 +496,6 @@ namespace IW4MAdmin.Application
                 .AddSingleton(serviceProvider =>
                     serviceProvider.GetRequiredService<IConfigurationHandler<CommandConfiguration>>()
                         .Configuration() ?? new CommandConfiguration())
-                .AddSingleton<IPluginImporter, PluginImporter>()
                 .AddSingleton<IMiddlewareActionHandler, MiddlewareActionHandler>()
                 .AddSingleton<IRConConnectionFactory, RConConnectionFactory>()
                 .AddSingleton<IGameServerInstanceFactory, GameServerInstanceFactory>()
@@ -547,10 +557,10 @@ namespace IW4MAdmin.Application
            
             serviceCollection.AddSingleton<ICoreEventHandler, CoreEventHandler>();
             serviceCollection.AddSource();
-            HandlePluginRegistration(appConfig, serviceCollection, masterRestClient);
+            HandlePluginRegistration(appConfig, serviceCollection, masterRestClient, plugins, commands, configurations, scriptPlugins);
         }
 
-        private static ILogger BuildDefaultLogger<T>(ApplicationConfiguration appConfig)
+        private static ILogger<T> BuildDefaultLogger<T>(ApplicationConfiguration appConfig)
         {
             var collection = new ServiceCollection()
                 .AddBaseLogger(appConfig)

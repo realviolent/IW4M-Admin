@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using IW4MAdmin.Application.API.Master;
 #if DEBUG
 using Microsoft.Extensions.DependencyModel;
@@ -51,7 +52,7 @@ namespace IW4MAdmin.Application.Plugin
         /// discovers all the script plugins in the plugins dir
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<(Type, string)> DiscoverScriptPlugins()
+        public async Task<IEnumerable<(Type, string)>> DiscoverScriptPluginsAsync()
         {
             var pluginDir = $"{Utilities.OperatingDirectory}{PluginDir}{Path.DirectorySeparatorChar}";
 
@@ -60,8 +61,9 @@ namespace IW4MAdmin.Application.Plugin
                 return Enumerable.Empty<(Type, string)>();
             }
 
+            var remoteScripts = await GetRemoteScriptsAsync();
             var scriptPluginFiles =
-                Directory.GetFiles(pluginDir, "*.js").AsEnumerable().Union(GetRemoteScripts()).ToList();
+                Directory.GetFiles(pluginDir, "*.js").AsEnumerable().Union(remoteScripts).ToList();
 
             var bothVersionPlugins = scriptPluginFiles.Select(fileName =>
             {
@@ -85,7 +87,7 @@ namespace IW4MAdmin.Application.Plugin
         /// discovers all the C# assembly plugins and commands
         /// </summary>
         /// <returns></returns>
-        public (IEnumerable<Type>, IEnumerable<Type>, IEnumerable<Type>) DiscoverAssemblyPluginImplementations()
+        public async Task<(IEnumerable<Type>, IEnumerable<Type>, IEnumerable<Type>)> DiscoverAssemblyPluginImplementationsAsync()
         {
             var pluginDir = $"{Utilities.OperatingDirectory}{PluginDir}{Path.DirectorySeparatorChar}";
             var pluginTypes = new List<Type>();
@@ -116,8 +118,9 @@ namespace IW4MAdmin.Application.Plugin
 #endif
 
             // we only want to load the most recent assembly in case of duplicates
+            var remoteAssemblies = await GetRemoteAssembliesAsync();
             var assemblies = dllFileNames.Select(fileName => fileName).Select(Assembly.LoadFrom)
-                .Union(GetRemoteAssemblies())
+                .Union(remoteAssemblies)
 #if DEBUG
                 .Union(reloadableAssemblies)
 #endif
@@ -179,12 +182,12 @@ namespace IW4MAdmin.Application.Plugin
             return (pluginTypes, commandTypes, configurationTypes);
         }
 
-        private IEnumerable<Assembly> GetRemoteAssemblies()
+        private async Task<IEnumerable<Assembly>> GetRemoteAssembliesAsync()
         {
             try
             {
-                _pluginSubscription ??= _masterApi
-                    .GetPluginSubscription(_appConfig.Id, _appConfig.SubscriptionId).Result;
+                _pluginSubscription ??= await _masterApi
+                    .GetPluginSubscription(_appConfig.Id, _appConfig.SubscriptionId);
 
                 return _remoteAssemblyHandler.DecryptAssemblies(_pluginSubscription
                     .Where(sub => sub.Type == PluginType.Binary).Select(sub => sub.Content).ToArray());
@@ -197,12 +200,12 @@ namespace IW4MAdmin.Application.Plugin
             }
         }
 
-        private IEnumerable<string> GetRemoteScripts()
+        private async Task<IEnumerable<string>> GetRemoteScriptsAsync()
         {
             try
             {
-                _pluginSubscription ??= _masterApi
-                    .GetPluginSubscription(_appConfig.Id, _appConfig.SubscriptionId).Result;
+                _pluginSubscription ??= await _masterApi
+                    .GetPluginSubscription(_appConfig.Id, _appConfig.SubscriptionId);
 
                 return _remoteAssemblyHandler.DecryptScripts(_pluginSubscription
                     .Where(sub => sub.Type == PluginType.Script).Select(sub => sub.Content).ToArray());
