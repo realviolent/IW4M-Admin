@@ -21,10 +21,12 @@ namespace WebfrontCore.Controllers
     public class ConfigurationController : BaseController
     {
         private readonly ApplicationConfigurationValidator _validator;
+        private readonly IConfigurationFileService _configurationFileService;
 
-        public ConfigurationController(IManager manager) : base(manager)
+        public ConfigurationController(IManager manager, IConfigurationFileService configurationFileService) : base(manager)
         {
             _validator = new ApplicationConfigurationValidator();
+            _configurationFileService = configurationFileService;
         }
 
         /// <summary>
@@ -50,15 +52,12 @@ namespace WebfrontCore.Controllers
 
             try
             {
-                // todo: move this into a service a some point
-                var model = await Task.WhenAll(System.IO.Directory
-                    .GetFiles(System.IO.Path.Join(Utilities.OperatingDirectory, "Configuration"))
-                    .Where(file => file.EndsWith(".json", StringComparison.InvariantCultureIgnoreCase))
-                    .Select(async fileName => new ConfigurationFileInfo
-                    {
-                        FileName = fileName.Split(System.IO.Path.DirectorySeparatorChar).Last(),
-                        FileContent = await System.IO.File.ReadAllTextAsync(fileName)
-                    }));
+                var files = await _configurationFileService.GetConfigurationFilesAsync();
+                var model = files.Select(file => new ConfigurationFileInfo
+                {
+                    FileName = file.FileName,
+                    FileContent = file.Content
+                }).ToList();
 
                 return View(model);
             }
@@ -98,18 +97,13 @@ namespace WebfrontCore.Controllers
                 return BadRequest($"{fileName}: {ex.Message}");
             }
 
-            var path = Path.Join(Utilities.OperatingDirectory, "Configuration",
-                fileName.Replace($"{Path.DirectorySeparatorChar}", ""));
-
-            // todo: move into a service at some point
-            if (!System.IO.File.Exists(path))
-            {
-                return BadRequest($"{fileName} does not exist");
-            }
-
             try
             {
-                await System.IO.File.WriteAllTextAsync(path, content);
+                await _configurationFileService.WriteConfigurationFileAsync(fileName, content);
+            }
+            catch (FileNotFoundException)
+            {
+                return BadRequest($"{fileName} does not exist");
             }
             catch (Exception ex)
             {
