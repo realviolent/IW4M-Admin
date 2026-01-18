@@ -27,7 +27,8 @@ namespace Stats.Client
         private readonly IDataValueCache<EFClientStatistics, double>
             _maxZScoreCache;
 
-        private readonly IConfigurationHandler<StatsConfiguration> _configurationHandler;
+        private IConfigurationHandler<StatsConfiguration> _configurationHandler;
+        private readonly IConfigurationHandlerFactory _configFactory;
         private readonly List<long> _serverIds = new List<long>();
 
         private const string DistributionCacheKey = nameof(DistributionCacheKey);
@@ -41,11 +42,12 @@ namespace Stats.Client
             _contextFactory = contextFactory;
             _distributionCache = distributionCache;
             _maxZScoreCache = maxZScoreCache;
-            _configurationHandler = configFactory.GetConfigurationHandler<StatsConfiguration>("StatsPluginSettings");
+            _configFactory = configFactory;
         }
 
         public async Task Initialize()
         {
+            _configurationHandler = await _configFactory.GetConfigurationHandlerAsync<StatsConfiguration>("StatsPluginSettings");
             await LoadServers();
             _distributionCache.SetCacheItem((async (set, token) =>
             {
