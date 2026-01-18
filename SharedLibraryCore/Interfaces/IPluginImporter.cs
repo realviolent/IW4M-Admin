@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SharedLibraryCore.Interfaces
 {
@@ -12,12 +13,12 @@ namespace SharedLibraryCore.Interfaces
         ///     discovers C# assembly plugin and command types
         /// </summary>
         /// <returns>tuple of IPlugin implementation type definitions, and IManagerCommand type definitions</returns>
-        (IEnumerable<Type>, IEnumerable<Type>, IEnumerable<Type>) DiscoverAssemblyPluginImplementations();
+        Task<(IEnumerable<Type>, IEnumerable<Type>, IEnumerable<Type>)> DiscoverAssemblyPluginImplementationsAsync();
 
         /// <summary>
         ///     discovers the script plugins
         /// </summary>
         /// <returns>initialized script plugin collection</returns>
-        IEnumerable<(Type, string)> DiscoverScriptPlugins();
+        Task<IEnumerable<(Type, string)>> DiscoverScriptPluginsAsync();
     }
 }
