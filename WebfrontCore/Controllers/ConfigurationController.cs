@@ -227,8 +227,9 @@ namespace WebfrontCore.Controllers
                 return Unauthorized();
             }
 
-            // todo: maybe make this cleaner in the future
-            if (propertyName.StartsWith("Servers") && serverIndex < 0)
+            var property = typeof(ApplicationConfiguration).GetProperty(propertyName);
+
+            if (property != null && property.PropertyType == typeof(ServerConfiguration[]) && serverIndex < 0)
             {
                 return PartialView("_ServerItem", new ApplicationConfiguration()
                 {
