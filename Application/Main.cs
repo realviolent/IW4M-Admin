@@ -471,6 +471,12 @@ namespace IW4MAdmin.Application
                 Utilities.PermissionLevelOverrides.TryAdd(key, value);
             }
 
+            // register level colors
+            foreach (var (key, value) in appConfig.PermissionLevelColors)
+            {
+                Utilities.PermissionLevelColors.TryAdd(key, value);
+            }
+
             // build the dependency list
             serviceCollection
                 .AddBaseLogger(appConfig)
