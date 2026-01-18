@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Responses;
@@ -6,27 +6,36 @@ using SharedLibraryCore.Interfaces;
 
 namespace IW4MAdmin.Application.Misc;
 
-public class GeoLocationService : IGeoLocationService
+public class GeoLocationService : IGeoLocationService, IDisposable
 {
-    private readonly string _sourceAddress;
+    private readonly DatabaseReader _reader;
     
     public GeoLocationService(string sourceAddress)
     {
-        _sourceAddress = sourceAddress;
+        try
+        {
+            _reader = new DatabaseReader(sourceAddress);
+        }
+        catch
+        {
+            // ignored
+        }
     }
     
     public Task<IGeoLocationResult> Locate(string address)
     {
         CountryResponse country = null;
         
-        try
+        if (_reader != null)
         {
-            using var reader = new DatabaseReader(_sourceAddress);
-            country = reader.Country(address);
-        }
-        catch
-        {
-            // ignored
+            try
+            {
+                country = _reader.Country(address);
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         var response = new GeoLocationResult
@@ -36,5 +45,10 @@ public class GeoLocationService : IGeoLocationService
         };
 
         return Task.FromResult((IGeoLocationResult)response);
+    }
+
+    public void Dispose()
+    {
+        _reader?.Dispose();
     }
 }
