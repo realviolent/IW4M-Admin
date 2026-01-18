@@ -18,6 +18,7 @@ namespace Stats.Config
         public int MostKillsMaxInactivityDays { get; set; } = 30;
         public int MostKillsClientLimit { get; set; } = 5;
         public bool EnableAdvancedMetrics { get; set; } = true;
+        public double BaseEloRating { get; set; } = 200.0;
 
         public WeaponNameParserConfiguration[] WeaponNameParserConfigurations { get; set; } = {
             new()
